@@ -82,19 +82,37 @@ RMSE_Iter0 = (1/n)*norm(A2-A2_gappy);
 
 [U_rec,S_rec,V_rec] = svd(A2_recons,"econ");
 singularValues = diag(S_rec);
+sigma1 = S_rec(1,1);
+log_sing_val = (1/sigma1)*singularValues;
+
 figure;
-plot(1:length(singularValues), singularValues);
+plot(1:length(log_sing_val), log_sing_val, 'x', 'LineWidth', 1);
+grid on;
+%figure;
+%plot(1:length(singularValues), singularValues);
+xlabel('Index');
+ylabel('Valores Singulares');
+title('Valores Singulares Ini. Ceros');
+
+[~,S_recM,~] = svd(A2_recons3,"econ");
+sinVal_M = diag(S_recM);
+sigma1_M = S_recM(1,1);
+log_sing_val_M = (1/sigma1_M)*sinVal_M;
+
+figure;
+plot(1:length(log_sing_val_M), log_sing_val_M, 'o', 'LineWidth', 1);
 grid on;
 xlabel('Index');
-ylabel('Singular Values');
-title('Singular Values of Matrix A2 Inicial');
-
+ylabel('Valores Singulares');
+title('Valores Singulares Ini. Makima');
 
 m_op = sum(singularValues > 1e-10);
-fprintf('La cantidad de modos optimos es: %.10f\n', m_op);
+fprintf('La cantidad de modos optimos (ini 0s) es: %.10f\n', m_op);
+m_opM = sum(sinVal_M > 1e-10);
+fprintf('La cantidad de modos optimos (ini Makima) es: %.10f\n', m_opM);
 
 A2_recons2 = A2_gappy;
-m_op = 20;
+m_op = 14;
 Vector_vals_gappy = zeros(size(A2_recons2));
 for i = 1:m_op
      Ei = U_rec(:, i) * V_rec(:, i)';
@@ -154,7 +172,7 @@ fprintf('El error maximo para la versión inicializacion makima iterada es: %.10
 RMSE_Iter3 = (1/n)*norm(A2-A2_recons3);
 fprintf('El RMSE para la versión makima iterada es: %.10f\n', RMSE_Iter3);
 
-
+disp('Inicializando Gappy-SVD para mansion.jpg')
 
 img_orig = imread("mansion.jpg");
 if size(img_orig,3) == 3
@@ -192,6 +210,7 @@ colormap gray;
 axis image;
 title(['Imagen con ',num2str(porcent_remove*100),' porciento de datos removidos']);
 
+disp('Inicializacion con makima para mansion.jpg')
 A_img_recon = fillmissing(A_img_gappy,"makima",2,"EndValues","nearest");
 figure;
 imagesc(A_img_recon);
@@ -235,7 +254,7 @@ fprintf('El error maximo para la versión iterada es: %.10f\n', MaxE_Iter_img);
 RMSE_Iter_img = (1/tamano)*norm(A_img-A_img_recon);
 fprintf('El RMSE para la versión iterada es: %.10f\n', RMSE_Iter_img);
 
-
+disp('Inicialización con blancos para mansion.jpg')
 A_img_recon2 = fillmissing(A_img_gappy,'constant',1);
 figure;
 imagesc(A_img_recon2);
@@ -279,7 +298,7 @@ fprintf('El error maximo para la versión iterada es: %.10f\n', MaxE_Iter_img);
 RMSE_Iter_img = (1/tamano)*norm(A_img-A_img_recon2);
 fprintf('El RMSE para la versión iterada es: %.10f\n', RMSE_Iter_img);
 
-
+disp('Inicializando Gappy-SVD para palm.jpg')
 img_orig2 = imread("palm.jpg");
 if size(img_orig2,3) == 3
     disp('--');
@@ -315,6 +334,8 @@ imagesc(A_img_gappy2);
 colormap gray;
 axis image;
 title(['Imagen con ',num2str(porcent_remove*100),' porciento de datos removidos']);
+
+disp('Inicializando con blancos para palm.jpg')
 
 A_img_recon3 = fillmissing(A_img_gappy2,'constant',1);
 figure;
@@ -357,4 +378,50 @@ MaxE_Iter_img = max(abs(A_img2-A_img_recon3), [],"all");
 fprintf('El error maximo para la versión iterada es: %.10f\n', MaxE_Iter_img);
 
 RMSE_Iter_img = (1/tamano)*norm(A_img2-A_img_recon3);
+fprintf('El RMSE para la versión iterada es: %.10f\n', RMSE_Iter_img);
+
+%Imagen 2 usando makima
+disp('Inicializando con makima para palm.jpg')
+
+A_img2_reMak = fillmissing(A_img_gappy2,"makima",2,"EndValues","nearest");
+figure;
+imagesc(A_img2_reMak);
+colormap gray;
+axis image;
+title('Inicializacion usando metodo makima');
+
+tamano = size(A_img2_reMak,1);
+
+MaxE_Ini = max(abs(A_img2-A_img2_reMak),[],"all");
+fprintf('Error maximo para inicializacion con makima: %.10f\n', MaxE_Ini);
+RMSE_Ini = (1/tamano)*norm(A_img2-A_img2_reMak);
+fprintf('El RMSE para inicializacion con makima es: %.10f\n', RMSE_Ini);
+
+[~,S,~] = svd(A_img2_reMak,"econ");
+singularValues = diag(S);
+m_op = sum(singularValues > 1e-10);
+fprintf('La cantidad de modos optimos es: %.10f\n', m_op);
+
+s = 50; %numero de iteraciones
+m = floor(0.1*m_op); %numero de modos
+for k = 1:s
+    [U,S,V] = svd(A_img2_reMak,"econ");
+    U_m = U(:,1:m);
+    S_m = S(1:m,1:m);
+    V_m = V(:,1:m);
+    Ak_img = U_m*S_m*V_m';
+    A_img2_reMak(posiciones_al_azar) = Ak_img(posiciones_al_azar);
+end
+figure;
+imagesc(A_img2_reMak);
+colormap gray;
+axis image;
+title(['Reconstruccion, ini makima y, ',num2str(m),' modos y ', num2str(s),' iteraciones']);
+
+% Calculo de errores
+
+MaxE_Iter_img = max(abs(A_img2-A_img2_reMak), [],"all");
+fprintf('El error maximo para la versión iterada es: %.10f\n', MaxE_Iter_img);
+
+RMSE_Iter_img = (1/tamano)*norm(A_img2-A_img2_reMak);
 fprintf('El RMSE para la versión iterada es: %.10f\n', RMSE_Iter_img);
